@@ -1,0 +1,11 @@
+CREATE DATABASE inventory_db;
+
+CREATE TABLE IF NOT EXISTS user_detail(userName VARCHAR(255) UNIQUE NOT NULL,password VARCHAR(255) NOT NULL);
+
+CREATE TABLE IF NOT EXISTS roles_detail(role_id SERIAL PRIMARY KEY,role_name VARCHAR(255) NOT NULL,role_desc VARCHAR(255) NOT NULL);
+
+CREATE TABLE IF NOT EXISTS detail_role (username varchar(255) unique not null,id_role INT NOT NULL,u_id Serial PRIMARY KEY,FOREIGN KEY (username)REFERENCES user_detail(username)
+,FOREIGN KEY (id_role) REFERENCES roles_detail(role_id));
+
+CREATE TABLE IF NOT EXISTS customer(u_id INT UNIQUE NOT NULL ,name VARCHAR(255),address VARCHAR(255),age INT,gender VARCHAR(255),status VARCHAR(255),shop VARCHAR(255),site VARCHAR(255),p_no NUMERIC CHECK (p_no > 9),email VARCHAR(255),fOREIGN KEY(u_id) REFERENCES detail_role(u_id));
+

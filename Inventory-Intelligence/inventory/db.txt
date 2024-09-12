@@ -1,0 +1,63 @@
+CREATE TABLE Inventory (
+    item_id VARCHAR(100) PRIMARY KEY,
+    product_id BIGINT NOT NULL,
+    quantity BIGINT NOT NULL;
+    zone_id UUID NOT NULL,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES Product(product_id),
+    FOREIGN KEY (zone_id) REFERENCES Zone(zone_id),
+    CONSTRAINT fk_item_zone UNIQUE (item_id, zone_id) -- Ensure item_id is unique within each zone
+);
+
+--INVENTORY HISTORY
+
+CREATE TABLE inventory_history (
+    history_id SERIAL PRIMARY KEY,
+    zone_id UUID NOT NULL,
+    quantity INT NOT NULL,
+    change_type VARCHAR(20) NOT NULL,
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (zone_id) REFERENCES Zone(zone_id)
+);
+
+SELECT SUM(quantity) FROM Inventory WHERE zone_id = zone_id;
+
+--FUNCTION FOR INVENTORY HISTORY TRIGGER
+
+CREATE OR REPLACE FUNCTION inventory_update_trigger()
+RETURNS TRIGGER AS
+$$
+DECLARE
+    old_quantity INT;
+    new_quantity INT;
+BEGIN
+    SELECT SUM(OLD.quantity) INTO old_quantity FROM Inventory WHERE zone_id = OLD.zone_id;
+    SELECT SUM(NEW.quantity) INTO new_quantity FROM Inventory WHERE zone_id = NEW.zone_id;
+
+    IF old_quantity IS NULL THEN
+        old_quantity := 0;
+    END IF;
+    IF new_quantity IS NULL THEN
+        new_quantity := 0;
+    END IF;
+
+    IF old_quantity <> new_quantity THEN
+        INSERT INTO inventory_history (zone_id, change_type, quantity)
+        VALUES (NEW.zone_id,
+                CASE WHEN new_quantity > old_quantity THEN 'Increase' ELSE 'Decrease' END,
+                ABS(old_quantity - new_quantity)
+                );
+    END IF;
+
+    RETURN NEW;
+END;
+$$
+LANGUAGE plpgsql;
+
+--TRIGGER FOR INVENTORY
+
+CREATE TRIGGER update_inventory_history
+AFTER  UPDATE ON Inventory
+FOR EACH ROW
+EXECUTE FUNCTION inventory_update_trigger();
+
